@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arabic-rag"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi", "uvicorn[standard]", "python-multipart",
+  "pydantic", "pydantic-settings",
+  "qdrant-client", "ollama", "pymupdf", "python-docx", "httpx",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff"]
+ui = ["streamlit"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: needs Qdrant and Ollama"]
+
+[tool.ruff]
+line-length = 100
