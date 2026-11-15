@@ -1,0 +1,1 @@
+from app.ingestion.parsers import docx, pdf, text  # noqa: F401  (importing registers the parsers)
