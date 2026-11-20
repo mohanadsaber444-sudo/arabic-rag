@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from pypdf import PdfReader
+import pdfplumber
 
 from app.domain.models import ParsedDocument, ParsedPage
 from app.ingestion.parsers.base import register
+from app.ingestion.parsers.pdf_layout import page_text
 
 
 class PdfParser:
@@ -11,11 +12,11 @@ class PdfParser:
     min_chars_per_page = 25
 
     def parse(self, path: Path) -> ParsedDocument:
-        reader = PdfReader(str(path))
-        pages = [
-            ParsedPage(number=number, text=page.extract_text() or "")
-            for number, page in enumerate(reader.pages, start=1)
-        ]
+        with pdfplumber.open(path) as pdf:
+            pages = [
+                ParsedPage(number=number, text=page_text(page))
+                for number, page in enumerate(pdf.pages, start=1)
+            ]
         empty = sum(1 for p in pages if len(p.text.strip()) < self.min_chars_per_page)
         needs_ocr = bool(pages) and empty / len(pages) > 0.5
         return ParsedDocument(pages=pages, needs_ocr=needs_ocr)
