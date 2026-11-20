@@ -1,4 +1,8 @@
+import math
+import re
 import unicodedata
+from collections import Counter
+
 
 JOINERS = set(",.:/+-@_&=?#")  # neutrals that stay inside a Latin word or a number
 COLUMN_GAP = 1.0  # a gap wider than this many font sizes separates table cells
@@ -124,3 +128,43 @@ def page_text(page) -> str:
     page_rtl = arabic > 0 and arabic >= latin
     lines = (line_text(line, page_rtl) for line in group_lines(chars))
     return "\n".join(t for t in lines if t)
+
+
+
+
+_PAGE_COUNTER = re.compile(r"\d+\s*/\s*\d+|(?:\u0635\u0641\u062d\u0629|page)\s*\d+(?:\s*(?:\u0645\u0646|of)\s*\d+)?", re.IGNORECASE)
+
+
+def _line_key(line: str) -> str:
+    """Page counters ("4 / 1", "Page 3") change from page to page, so they are ignored when comparing lines."""
+    return _PAGE_COUNTER.sub("#", line).strip()
+
+
+def remove_repeated_lines(pages: list[str], edge: int = 2, share: float = 0.6) -> list[str]:
+    """Drop running headers and footers: lines at the top or bottom edge of most pages.
+
+    The first page that has such a line keeps it, so no information is lost, only repeated.
+    """
+    split = [page.splitlines() for page in pages]
+    counts: Counter[str] = Counter()
+    for lines in split:
+        edges = lines[:edge] + lines[-edge:]
+        counts.update({_line_key(line) for line in edges if line.strip()})
+    threshold = max(2, math.ceil(share * len(pages)))
+    repeated = {key for key, n in counts.items() if n >= threshold}
+
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for lines in split:
+        kept: list[str] = []
+        for index, line in enumerate(lines):
+            key = _line_key(line)
+            at_edge = index < edge or index >= len(lines) - edge
+            if at_edge and key in repeated:
+                if key not in seen:
+                    seen.add(key)
+                    kept.append(line)
+                continue
+            kept.append(line)
+        cleaned.append("\n".join(kept))
+    return cleaned
